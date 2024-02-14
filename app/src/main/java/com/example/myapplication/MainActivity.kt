@@ -1,9 +1,12 @@
 package com.example.myapplication
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.media.MediaPlayer
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.telephony.SmsManager
 import android.widget.Button
 import android.widget.EditText
@@ -17,8 +20,12 @@ import com.google.android.gms.location.LocationServices
 class MainActivity : AppCompatActivity() {
 
     private val REQUEST_LOCATION_PERMISSION = 1
+    private val REQUEST_CONTACT_PERMISSION = 2
     private lateinit var contact1EditText: EditText
     private lateinit var contact2EditText: EditText
+    private lateinit var sosButton: Button
+    private lateinit var mediaPlayer: MediaPlayer
+    private val PICK_CONTACT = 3
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,10 +33,26 @@ class MainActivity : AppCompatActivity() {
 
         contact1EditText = findViewById(R.id.contact1)
         contact2EditText = findViewById(R.id.contact2)
+        sosButton = findViewById(R.id.sendSOSButton)
+        mediaPlayer = MediaPlayer.create(this, R.raw.alarm)
 
-        val sendSOSButton: Button = findViewById(R.id.sendSOSButton)
-        sendSOSButton.setOnClickListener {
+        sosButton.setOnClickListener {
             requestLocationPermission()
+            mediaPlayer.start()
+        }
+
+        val stopSoundButton: Button = findViewById(R.id.stopButton)
+        stopSoundButton.setOnClickListener {
+            if (mediaPlayer.isPlaying)
+                mediaPlayer.stop()
+        }
+
+        contact1EditText.setOnClickListener {
+            requestContactPermission()
+        }
+
+        contact2EditText.setOnClickListener {
+            requestContactPermission()
         }
     }
 
@@ -49,8 +72,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestContactPermission() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_CONTACTS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_CONTACTS),
+                REQUEST_CONTACT_PERMISSION
+            )
+        } else {
+            pickContact()
+        }
+    }
+
     private fun getCurrentLocation() {
-        val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        val fusedLocationClient: FusedLocationProviderClient =
+            LocationServices.getFusedLocationProviderClient(this)
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -59,28 +99,22 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
             return
         }
         fusedLocationClient.lastLocation
             .addOnSuccessListener { location: Location? ->
                 location?.let {
-                    // Location retrieved successfully, now you can send the SOS with this location
                     sendSOS(location)
                 } ?: run {
-                    // Location is null, handle this case if needed
                     Toast.makeText(this, "Failed to get location", Toast.LENGTH_SHORT).show()
                 }
             }
             .addOnFailureListener { e ->
-                // Failed to retrieve location, handle this case if needed
-                Toast.makeText(this, "Failed to get location: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Failed to get location: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
     }
 
@@ -97,11 +131,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendSMSWithLocation(phoneNumber: String, location: Location) {
-        // Construct the Google Maps URL with latitude and longitude
         val mapsUrl = "https://www.google.com/maps?q=${location.latitude},${location.longitude}"
-
-        // Compose SMS message with location details and Google Maps link
-        val smsMessage = "Emergency! My current location is: ${location.latitude}, ${location.longitude}. Click to view on Google Maps: $mapsUrl"
+        val smsMessage =
+            "Emergency! My current location is: ${location.latitude}, ${location.longitude}. Click to view on Google Maps: $mapsUrl"
 
         try {
             val smsManager: SmsManager = SmsManager.getDefault()
@@ -110,6 +142,11 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "Failed to send SOS", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun pickContact() {
+        val intent = Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI)
+        startActivityForResult(intent, PICK_CONTACT)
     }
 
     override fun onRequestPermissionsResult(
@@ -123,6 +160,60 @@ class MainActivity : AppCompatActivity() {
                 getCurrentLocation()
             } else {
                 Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show()
+            }
+        } else if (requestCode == REQUEST_CONTACT_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                pickContact()
+            } else {
+                Toast.makeText(this, "Contact permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_CONTACT && resultCode == RESULT_OK) {
+            data?.data?.let { contactUri ->
+                val cursor = contentResolver.query(contactUri, null, null, null, null)
+                cursor?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val hasPhoneNumber =
+                            cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER))
+                        if (hasPhoneNumber > 0) {
+                            val id =
+                                cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID))
+                            val phoneCursor = contentResolver.query(
+                                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                null,
+                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                                arrayOf(id),
+                                null
+                            )
+                            phoneCursor?.use { phoneCursor ->
+                                if (phoneCursor.moveToFirst()) {
+                                    val phoneNumber =
+                                        phoneCursor.getString(
+                                            phoneCursor.getColumnIndex(
+                                                ContactsContract.CommonDataKinds.Phone.NUMBER
+                                            )
+                                        )
+
+                                    if (contact1EditText.hasFocus()) {
+                                        contact1EditText.setText(phoneNumber)
+                                    } else if (contact2EditText.hasFocus()) {
+                                        contact2EditText.setText(phoneNumber)
+                                    }
+                                }
+                            }
+                        } else {
+                            Toast.makeText(
+                                this,
+                                "Selected contact does not have a phone number",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
             }
         }
     }
