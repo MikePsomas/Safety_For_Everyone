@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.myapplication">
 
-    <!-- Permissions -->
+
     <uses-feature
         android:name="android.hardware.telephony"
         android:required="false" />
@@ -11,22 +11,24 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
 
-    <!-- Application -->
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@color/Purple"
         android:label="Safety For Everyone"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/walk"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication"
         tools:targetApi="31">
 
-        <!-- MainActivity -->
+
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashScreen"
             android:theme="@style/Theme.MyApplication"
             android:exported="true">
             <intent-filter>
@@ -35,9 +37,9 @@
             </intent-filter>
         </activity>
 
-        <!-- SplashScreen -->
+
         <activity
-            android:name=".SplashScreen"
+            android:name=".MainActivity"
             android:exported="true">
         </activity>
 
