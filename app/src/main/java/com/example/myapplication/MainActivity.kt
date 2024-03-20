@@ -22,7 +22,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import java.util.logging.Handler
+
 
 
 @Suppress("DEPRECATION")
@@ -65,17 +65,21 @@ class MainActivity : AppCompatActivity(), ShakeDetector.OnShakeListener {
     // Use of Activity Result Contacts to handle contact picking
     private val pickContactLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            // Check if the result is OK
             if (result.resultCode == RESULT_OK) {
+                // Get the data from the results
                 result.data?.data?.let { contactUri ->
+                    // retrieve the contact information
                     val cursor = contentResolver.query(contactUri, null, null, null, null)
                     cursor?.use { outerCursor ->
-                        // We Retrieve the contact information from here!
+                        // We check if the cursor contains the required columns
                         val idColumnIndex =
                             outerCursor.getColumnIndex(ContactsContract.Contacts._ID)
                         val nameColumnIndex =
                             outerCursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)
-
+                        // Check if both columns are found
                         if (idColumnIndex != -1 && nameColumnIndex != -1) {
+                            //Move to the first row of the cursor
                             if (outerCursor.moveToFirst()) {
                                 val contactId = outerCursor.getString(idColumnIndex)
                                 val displayName = outerCursor.getString(nameColumnIndex)
@@ -90,12 +94,16 @@ class MainActivity : AppCompatActivity(), ShakeDetector.OnShakeListener {
                                 )
 
                                 phoneCursor?.use { innerCursor ->
+                                    // Check if the phone number column exist
                                     val phoneNumberColumnIndex =
                                         innerCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
                                     if (phoneNumberColumnIndex != -1) {
+                                        // Move to the first row
                                         if (innerCursor.moveToFirst()) {
+                                            // Get the phone number
                                             val phoneNumber =
                                                 innerCursor.getString(phoneNumberColumnIndex)
+                                            // Save the contact number
                                             saveContactNumber("$displayName: $phoneNumber")
                                         } else {
                                             //Inform the user that this contact has no phone number is empty
@@ -127,16 +135,18 @@ class MainActivity : AppCompatActivity(), ShakeDetector.OnShakeListener {
             }
         }
 
-    //Adjust the volume for media player!
+    //Adjust the volume for media player! plays the sound at maximum volume
     private fun adjustVolumeForMediaPlayer() {
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         am.setStreamVolume(
             AudioManager.STREAM_MUSIC,
+            // forces the sound to maximum volume
             am.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
             0
         )
     }
     //Adjust the volume for audio manager
+    //changes the phone if its in silent mode to Ringer/Normal mode
     private fun adjustVolumeAndState() {
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         am.setStreamVolume(
@@ -144,6 +154,7 @@ class MainActivity : AppCompatActivity(), ShakeDetector.OnShakeListener {
             am.getStreamMaxVolume(AudioManager.STREAM_RING),
             0
         )
+        // set the phone into ringer mode and ensures that the device will ring(if its silent)
         am.ringerMode = AudioManager.RINGER_MODE_NORMAL
     }
     //Setting up the activity's UI
