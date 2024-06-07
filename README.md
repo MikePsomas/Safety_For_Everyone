@@ -9,3 +9,4 @@ The features of the proposed Safety for Everyone application are the following:
 •	Sending an SOS message, the user can send his/her GPS location through an SOS message with the press of one button or without it via the use of the shake detector function,
 •	Shake detector activation, an SOS message is automatically sent to the emergency contact(s) with the GPS location of the person in need without pressing any buttons when intense motion is detected and,
 •	Siren activation, the phone will enable the function of a siren at maximum volume even if the smartphone is in silent mode at the same time when the SOS message is sent or when the shake detector is activated.
+
